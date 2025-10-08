@@ -6,7 +6,7 @@ import { cacheService } from './cache';
 const oauthClient = new OAuth1Client();
 
 export async function getSalesOrders(forceRefresh: boolean = false): Promise<any[]> {
-	const currentDate = format(subDays(new Date(), 30), 'MM/dd/yy'); // Extended to 30 days
+	const currentDate = format(subDays(new Date(), 10), 'MM/dd/yy'); // Extended to 60 days
 	const today = format(new Date(), 'MM/dd/yy');
 	const tomorrow = format(new Date(Date.now() + 24 * 60 * 60 * 1000), 'MM/dd/yy'); // Tomorrow's date
 	
@@ -21,7 +21,7 @@ export async function getSalesOrders(forceRefresh: boolean = false): Promise<any
 	}
 	
 	const baseUrl = 'https://api.tradevine.com/v1/SalesOrder';
-	const statuses = ['12001', '12002', '12003'];
+	const statuses = ['12001', '12002', '12003', '12004', '12005', '12006'];
 	
 	// Fetch orders from the last 30 days up to tomorrow
 	const requests = statuses.map(status => 
