@@ -159,7 +159,7 @@ export class PDFService {
 				`;
 				clonedDoc.head.appendChild(style);
 			}
-		});
+		} as any);
 
 		// Create PDF
 		const imgData = canvas.toDataURL('image/png');
