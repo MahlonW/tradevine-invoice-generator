@@ -17,6 +17,12 @@ export const POST: RequestHandler = async ({ request }) => {
 		const printNodeApiKey = env.PRINTNODE_API_KEY;
 		const printerId = env.PRINTNODE_PRINTER_ID;
 		
+		console.log('PrintNode config check:', {
+			hasApiKey: !!printNodeApiKey,
+			hasPrinterId: !!printerId,
+			printerId: printerId
+		});
+		
 		if (!printNodeApiKey || !printerId) {
 			return json(
 				{ error: 'PrintNode configuration not complete. Please set PRINTNODE_API_KEY and PRINTNODE_PRINTER_ID' },
@@ -42,13 +48,19 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		if (!printResponse.ok) {
 			const errorData = await printResponse.json();
+			console.error('PrintNode API error:', {
+				status: printResponse.status,
+				statusText: printResponse.statusText,
+				errorData: errorData
+			});
 			return json(
-				{ error: `PrintNode API error: ${errorData.message || 'Unknown error'}` },
+				{ error: `PrintNode API error: ${errorData.message || errorData.error || 'Unknown error'}` },
 				{ status: printResponse.status }
 			);
 		}
 
 		const result = await printResponse.json();
+		console.log('PrintNode success:', result);
 		
 		return json({
 			success: true,

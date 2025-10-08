@@ -23,6 +23,14 @@
 	let isPrinting = false;
 	let isDownloadAndPrint = false;
 
+	// Function to create a safe filename
+	function createSafeFilename(baseName) {
+		return baseName
+			.replace(/[^a-zA-Z0-9\s-_]/g, '') // Remove special characters
+			.replace(/\s+/g, '-') // Replace spaces with hyphens
+			.toLowerCase();
+	}
+
 	// Reactive statement to calculate total when arrays change
 	$: {
 		console.log('Reactive total calculation triggered - editedLines:', editedLines.length, 'customProducts:', customProducts.length);
@@ -297,7 +305,11 @@
 	async function downloadPDF() {
 		try {
 			isGeneratingPDF = true;
-			const filename = `invoice-${invoiceNumber}-${currentDate}.pdf`;
+			// Get customer name from the first order
+			const customerName = salesOrders.length > 0 && salesOrders[0].RecipientName 
+				? createSafeFilename(salesOrders[0].RecipientName) 
+				: 'customer';
+			const filename = `invoice-${invoiceNumber}-${customerName}.pdf`;
 			await pdfService.downloadPDF('invoice-content', filename);
 		} catch (error) {
 			console.error('Error generating PDF:', error);
@@ -311,11 +323,26 @@
 		try {
 			isPrinting = true;
 			const filename = `invoice-${invoiceNumber}-${currentDate}.pdf`;
-			await pdfService.printPDF('invoice-content', filename);
+			console.log('Starting print process for:', filename);
+			
+			// First test PDF generation
+			console.log('Generating PDF...');
+			const pdfBlob = await pdfService.generatePDF('invoice-content', filename);
+			console.log('PDF generated successfully, size:', pdfBlob.size);
+			
+			// Convert to base64
+			console.log('Converting to base64...');
+			const base64 = await pdfService.blobToBase64(pdfBlob);
+			console.log('Base64 conversion complete, length:', base64.length);
+			
+			// Send to PrintNode
+			console.log('Sending to PrintNode...');
+			await pdfService.sendToPrintNode(base64, filename);
+			
 			alert('Print job sent successfully!');
 		} catch (error) {
 			console.error('Error printing invoice:', error);
-			alert('Error sending print job. Please check PrintNode configuration.');
+			alert(`Error sending print job: ${error.message || 'Please check PrintNode configuration.'}`);
 		} finally {
 			isPrinting = false;
 		}
@@ -324,7 +351,11 @@
 	async function downloadAndPrint() {
 		try {
 			isDownloadAndPrint = true;
-			const downloadFilename = `${invoiceNumber}.pdf`;
+			// Get customer name from the first order
+			const customerName = salesOrders.length > 0 && salesOrders[0].RecipientName 
+				? createSafeFilename(salesOrders[0].RecipientName) 
+				: 'customer';
+			const downloadFilename = `invoice-${invoiceNumber}-${customerName}.pdf`;
 			const printFilename = `invoice-${invoiceNumber}-${currentDate}.pdf`;
 			
 			// Generate PDF once
@@ -347,7 +378,7 @@
 			alert('PDF downloaded and print job sent successfully!');
 		} catch (error) {
 			console.error('Error with download and print:', error);
-			alert('Error with download and print. Please try again.');
+			alert(`Error with download and print: ${error.message || 'Please try again.'}`);
 		} finally {
 			isDownloadAndPrint = false;
 		}
@@ -556,6 +587,9 @@
 						<h3 class="text-2xl font-bold text-gray-900 mb-4">TAX INVOICE</h3>
 						<div class="space-y-1 text-sm">
 							<div><span class="font-semibold">Invoice Number:</span> 00{invoiceNumber}</div>
+							{#if order.RecipientName}
+								<div><span class="font-semibold">Customer:</span> {order.RecipientName}</div>
+							{/if}
 							<div><span class="font-semibold">Listing Number:</span> {order.CustomerOrderReference}</div>
 							<div><span class="font-semibold">Date:</span> {currentDate}</div>
 							<div><span class="font-semibold">GST:</span> 044-002-868</div>

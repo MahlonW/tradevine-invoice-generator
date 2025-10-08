@@ -159,7 +159,7 @@ export class PDFService {
 				`;
 				clonedDoc.head.appendChild(style);
 			}
-		} as any);
+		});
 
 		// Create PDF
 		const imgData = canvas.toDataURL('image/png');
@@ -260,6 +260,12 @@ export class PDFService {
 	 * Send PDF to PrintNode for printing
 	 */
 	async sendToPrintNode(base64Pdf: string, filename: string): Promise<void> {
+		console.log('Sending to PrintNode:', {
+			filename: filename,
+			pdfLength: base64Pdf.length,
+			pdfPreview: base64Pdf.substring(0, 50) + '...'
+		});
+
 		const response = await fetch('/api/print', {
 			method: 'POST',
 			headers: {
@@ -271,10 +277,16 @@ export class PDFService {
 			})
 		});
 
+		console.log('PrintNode response status:', response.status);
+
 		if (!response.ok) {
 			const error = await response.json();
-			throw new Error(`PrintNode error: ${error.message || 'Unknown error'}`);
+			console.error('PrintNode error response:', error);
+			throw new Error(`PrintNode error: ${error.error || error.message || 'Unknown error'}`);
 		}
+
+		const result = await response.json();
+		console.log('PrintNode success response:', result);
 	}
 
 	/**
