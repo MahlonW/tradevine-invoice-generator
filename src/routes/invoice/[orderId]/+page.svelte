@@ -92,16 +92,23 @@
 	function toggleEditingMode() {
 		editingMode = !editingMode;
 		console.log('Editing mode toggled:', editingMode);
-		if (!editingMode) {
-			// Reset to original data when exiting edit mode, but keep custom products
-			initializeEditedLines();
-			// Don't clear customProducts - keep them visible
-		}
+		console.log('Current calculatedTotal before toggle:', calculatedTotal);
+		console.log('editedLines after toggle:', editedLines.map(l => ({ name: l.Name, price: l.SellPriceIncTax, qty: l.Quantity, link_text: l.link_text })));
+		// Keep all edited data when exiting edit mode
+		// Don't reset to original data - preserve user edits
 	}
 
 	function editProductName(lineId, field) {
-		const line = editedLines.find(l => l.ID === lineId);
-		if (line) {
+		console.log('Editing product with ID:', lineId, 'field:', field);
+		console.log('All line IDs:', editedLines.map(l => ({ id: l.ID, name: l.Name })));
+		
+		const lineIndex = editedLines.findIndex(l => l.ID === lineId);
+		console.log('Found line at index:', lineIndex);
+		
+		if (lineIndex !== -1) {
+			const line = editedLines[lineIndex];
+			console.log('Editing line:', line.Name, 'at index:', lineIndex);
+			
 			const currentValue = field === 'name' ? (line.link_text || line.Name) : 
 								field === 'quantity' ? Math.floor(line.Quantity) : 
 								line.SellPriceIncTax;
@@ -112,18 +119,78 @@
 			
 			const newValue = prompt(promptText, currentValue.toString());
 			if (newValue !== null && newValue.trim() !== '') {
-				if (field === 'name') {
-					line.link_text = newValue.trim();
-				} else if (field === 'quantity') {
-					line.Quantity = parseFloat(newValue) || 1;
-				} else if (field === 'price') {
-					line.SellPriceIncTax = parseFloat(newValue) || 0;
-				}
-				line.isEdited = true;
+				console.log('Updating line at index:', lineIndex, 'with new value:', newValue);
+				
+				// Create a new array to trigger reactivity
+				editedLines = editedLines.map((item, index) => {
+					if (index === lineIndex) {
+						const updatedLine = { ...item };
+						if (field === 'name') {
+							updatedLine.link_text = newValue.trim();
+						} else if (field === 'quantity') {
+							updatedLine.Quantity = parseFloat(newValue) || 1;
+						} else if (field === 'price') {
+							updatedLine.SellPriceIncTax = parseFloat(newValue) || 0;
+						}
+						updatedLine.isEdited = true;
+						console.log('Updated line:', updatedLine.Name, 'link_text:', updatedLine.link_text);
+						return updatedLine;
+					}
+					return item;
+				});
+				
 				// Force recalculation
 				calculatedTotal = calculateTotal();
 				console.log('Recalculated total after editing product:', calculatedTotal);
 			}
+		} else {
+			console.error('Line not found with ID:', lineId);
+		}
+	}
+
+	function editProductNameByIndex(lineIndex, field) {
+		console.log('Editing product at index:', lineIndex, 'field:', field);
+		
+		if (lineIndex >= 0 && lineIndex < editedLines.length) {
+			const line = editedLines[lineIndex];
+			console.log('Editing line:', line.Name, 'at index:', lineIndex);
+			
+			const currentValue = field === 'name' ? (line.link_text || line.Name) : 
+								field === 'quantity' ? Math.floor(line.Quantity) : 
+								line.SellPriceIncTax;
+			
+			const promptText = field === 'name' ? 'Enter the new product name:' :
+							  field === 'quantity' ? 'Enter the new quantity:' :
+							  'Enter the new price:';
+			
+			const newValue = prompt(promptText, currentValue.toString());
+			if (newValue !== null && newValue.trim() !== '') {
+				console.log('Updating line at index:', lineIndex, 'with new value:', newValue);
+				
+				// Create a new array to trigger reactivity
+				editedLines = editedLines.map((item, index) => {
+					if (index === lineIndex) {
+						const updatedLine = { ...item };
+						if (field === 'name') {
+							updatedLine.link_text = newValue.trim();
+						} else if (field === 'quantity') {
+							updatedLine.Quantity = parseFloat(newValue) || 1;
+						} else if (field === 'price') {
+							updatedLine.SellPriceIncTax = parseFloat(newValue) || 0;
+						}
+						updatedLine.isEdited = true;
+						console.log('Updated line:', updatedLine.Name, 'link_text:', updatedLine.link_text);
+						return updatedLine;
+					}
+					return item;
+				});
+				
+				// Force recalculation
+				calculatedTotal = calculateTotal();
+				console.log('Recalculated total after editing product:', calculatedTotal);
+			}
+		} else {
+			console.error('Invalid line index:', lineIndex);
 		}
 	}
 
@@ -158,8 +225,9 @@
 	}
 
 	function editCustomProduct(lineId, field) {
-		const product = customProducts.find(p => p.ID === lineId);
-		if (product) {
+		const productIndex = customProducts.findIndex(p => p.ID === lineId);
+		if (productIndex !== -1) {
+			const product = customProducts[productIndex];
 			const currentValue = field === 'name' ? product.Name :
 								field === 'quantity' ? product.Quantity :
 								product.SellPriceIncTax;
@@ -170,13 +238,22 @@
 			
 			const newValue = prompt(promptText, currentValue.toString());
 			if (newValue !== null && newValue.trim() !== '') {
-				if (field === 'name') {
-					product.Name = newValue.trim();
-				} else if (field === 'quantity') {
-					product.Quantity = parseFloat(newValue) || 1;
-				} else if (field === 'price') {
-					product.SellPriceIncTax = parseFloat(newValue) || 0;
-				}
+				// Create a new array to trigger reactivity
+				customProducts = customProducts.map((item, index) => {
+					if (index === productIndex) {
+						const updatedProduct = { ...item };
+						if (field === 'name') {
+							updatedProduct.Name = newValue.trim();
+						} else if (field === 'quantity') {
+							updatedProduct.Quantity = parseFloat(newValue) || 1;
+						} else if (field === 'price') {
+							updatedProduct.SellPriceIncTax = parseFloat(newValue) || 0;
+						}
+						return updatedProduct;
+					}
+					return item;
+				});
+				
 				// Force recalculation
 				calculatedTotal = calculateTotal();
 				console.log('Recalculated total after editing custom product:', calculatedTotal);
@@ -537,14 +614,14 @@
 						</thead>
 						<tbody class="bg-white divide-y divide-gray-200">
 							<!-- Original Products (excluding shipping) -->
-							{#each editedLines as line}
+							{#each editedLines as line, lineIndex}
 								{#if line.Name !== 'Shipping'}
 									<tr class="hover:bg-gray-50 {line.isEdited ? 'bg-yellow-50' : ''}">
 										<td class="px-4 py-3 text-sm text-gray-900 border-b border-gray-200">
 											{#if editingMode}
 												<button 
 													class="editable text-left hover:text-blue-600 transition-colors {line.isEdited ? 'text-orange-600 font-semibold' : ''}" 
-													on:click={() => editProductName(line.ID, 'name')}
+													on:click={() => editProductNameByIndex(lineIndex, 'name')}
 												>
 													{line.link_text || line.Name}
 													{#if line.isEdited}
@@ -559,7 +636,7 @@
 											{#if editingMode}
 												<button 
 													class="editable hover:text-blue-600 transition-colors {line.isEdited ? 'text-orange-600 font-semibold' : ''}" 
-													on:click={() => editProductName(line.ID, 'quantity')}
+													on:click={() => editProductNameByIndex(lineIndex, 'quantity')}
 												>
 													{Math.floor(line.Quantity)}
 												</button>
@@ -571,7 +648,7 @@
 											{#if editingMode}
 												<button 
 													class="editable hover:text-blue-600 transition-colors {line.isEdited ? 'text-orange-600 font-semibold' : ''}" 
-													on:click={() => editProductName(line.ID, 'price')}
+													on:click={() => editProductNameByIndex(lineIndex, 'price')}
 												>
 													${(line.SellPriceIncTax * line.Quantity).toFixed(2)}
 												</button>
@@ -654,29 +731,29 @@
 							{/each}
 							
 							<!-- Shipping -->
-							{#each editedLines as line}
+							{#each editedLines as line, lineIndex}
 								{#if line.Name === 'Shipping'}
 									<tr class="hover:bg-gray-50 {line.isEdited ? 'bg-yellow-50' : ''}">
 										<td class="px-4 py-3 text-sm text-gray-900 border-b border-gray-200">
 											{#if editingMode}
 												<button 
 													class="editable text-left hover:text-blue-600 transition-colors {line.isEdited ? 'text-orange-600 font-semibold' : ''}" 
-													on:click={() => editProductName(line.ID, 'name')}
+													on:click={() => editProductNameByIndex(lineIndex, 'name')}
 												>
-													{line.Name}
+													{line.link_text || line.Name}
 													{#if line.isEdited}
 														<span class="text-xs text-orange-500 ml-1">(edited)</span>
 													{/if}
 												</button>
 											{:else}
-												{line.Name}
+												{line.link_text || line.Name}
 											{/if}
 										</td>
 										<td class="px-4 py-3 text-sm text-gray-900 border-b border-gray-200">
 											{#if editingMode}
 												<button 
 													class="editable hover:text-blue-600 transition-colors {line.isEdited ? 'text-orange-600 font-semibold' : ''}" 
-													on:click={() => editProductName(line.ID, 'quantity')}
+													on:click={() => editProductNameByIndex(lineIndex, 'quantity')}
 												>
 													{Math.floor(line.Quantity)}
 												</button>
@@ -688,7 +765,7 @@
 											{#if editingMode}
 												<button 
 													class="editable hover:text-blue-600 transition-colors {line.isEdited ? 'text-orange-600 font-semibold' : ''}" 
-													on:click={() => editProductName(line.ID, 'price')}
+													on:click={() => editProductNameByIndex(lineIndex, 'price')}
 												>
 													${(line.SellPriceIncTax * line.Quantity).toFixed(2)}
 												</button>
@@ -748,7 +825,7 @@
 								<td class="px-4 py-3 text-sm font-bold text-gray-900">Total Inc GST</td>
 								<td class="px-4 py-3"></td>
 								<td class="px-4 py-3 text-sm font-bold text-gray-900 text-right">
-									${editingMode ? calculatedTotal.toFixed(2) : order.GrandTotal}
+									${calculatedTotal.toFixed(2)}
 								</td>
 								{#if editingMode}
 									<td class="px-4 py-3"></td>
