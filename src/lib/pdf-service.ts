@@ -39,35 +39,16 @@ export class PDFService {
 
 		// Create canvas from HTML element
 		const canvas = await html2canvas(element, {
-			scale: 2.0, // Higher scale for better quality
 			useCORS: true,
 			allowTaint: true,
-			backgroundColor: '#ffffff',
+			background: '#ffffff',
 			width: element.scrollWidth,
 			height: element.scrollHeight + 120, // Use scrollHeight to include all content
-			scrollX: 0,
-			scrollY: 0,
-			windowWidth: element.scrollWidth,
-			windowHeight: element.scrollHeight + 120,
-			ignoreElements: (element) => {
-				// Skip elements that might cause issues, but ensure footer is included
-				if (element.classList.contains('no-print')) {
-					return true;
-				}
-				// Don't ignore footer elements
-				if (element.classList.contains('mt-8') && element.classList.contains('text-center')) {
-					return false;
-				}
-				return false;
-			},
 			onclone: (clonedDoc) => {
-				// Add footer text directly after the table
-				const table = clonedDoc.querySelector('.invoice-table');
-				
-				// Override problematic oklch colors and ensure proper layout for PDF
+				// Override problematic oklch colors with RGB equivalents
 				const style = clonedDoc.createElement('style');
 				style.textContent = `
-					/* Override only oklch colors with RGB equivalents */
+					/* Override oklch colors with RGB equivalents */
 					.bg-white { background-color: #ffffff !important; }
 					.bg-gray-50 { background-color: #f9fafb !important; }
 					.bg-gray-100 { background-color: #f3f4f6 !important; }
@@ -91,43 +72,41 @@ export class PDFService {
 					.border-gray-300 { border-color: #d1d5db !important; }
 					
 					/* Force addresses to be side-by-side for PDF */
-
+					.address-grid {
+						display: grid !important;
+						grid-template-columns: 1fr 1fr !important;
+						gap: 2rem !important;
+					}
 					
-					/* Make everything bigger */
+					/* Make everything bigger for PDF */
 					body {
 						font-size: 18px !important;
 					}
 					
-					/* Make logo bigger */
 					#logo {
 						max-width: 400px !important;
 						height: auto !important;
 					}
 					
-					/* Add spacing between address lines */
 					.address-grid p {
 						margin-bottom: 0.4rem !important;
 						font-size: 18px !important;
 					}
 					
-					/* Ensure address headings have proper spacing */
 					.address-grid h4 {
 						margin-bottom: 0.75rem !important;
 						font-weight: 600 !important;
 						font-size: 20px !important;
 					}
 					
-					/* Make invoice title bigger */
 					.text-2xl {
 						font-size: 32px !important;
 					}
 					
-					/* Make table text bigger */
 					.invoice-table th, .invoice-table td {
 						font-size: 16px !important;
 					}
 					
-					/* Ensure footer text is visible */
 					.mt-8 {
 						margin-top: 3rem !important;
 						padding-bottom: 2rem !important;
@@ -165,7 +144,6 @@ export class PDFService {
 						position: relative !important;
 					}
 					
-					
 					/* Ensure proper text rendering */
 					body, * {
 						-webkit-font-smoothing: antialiased;
@@ -181,7 +159,7 @@ export class PDFService {
 				`;
 				clonedDoc.head.appendChild(style);
 			}
-		});
+		} as any);
 
 		// Create PDF
 		const imgData = canvas.toDataURL('image/png');

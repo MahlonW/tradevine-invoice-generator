@@ -1,5 +1,5 @@
 {
-  "name": "trademe-svelte-app",
+  "name": "tradevine-invoice-generator",
   "version": "1.0.0",
   "description": "A modern Svelte-based web application for managing TradeMe sales orders, invoices, and sales analytics",
   "type": "module",
@@ -14,15 +14,7 @@
     "dashboard",
     "analytics"
   ],
-  "homepage": "https://github.com/yourusername/trademe-svelte-app#readme",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/yourusername/trademe-svelte-app.git"
-  },
-  "bugs": {
-    "url": "https://github.com/yourusername/trademe-svelte-app/issues"
-  },
-  "author": "Your Name <your.email@example.com>",
+  "author": "Mahlon <mahlon.w@outlook.com>",
   "license": "MIT",
   "scripts": {
     "build": "vite build",
@@ -40,6 +32,7 @@
     "@tailwindcss/forms": "^0.5.10",
     "@tailwindcss/vite": "^4.1.14",
     "@types/crypto-js": "^4.2.2",
+    "@types/html2canvas": "^0.5.35",
     "@types/node": "^24.7.0",
     "autoprefixer": "^10.4.21",
     "postcss": "^8.5.6",
@@ -57,6 +50,8 @@
     "date-fns": "^2.30.0",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.3",
     "mysql2": "^3.6.5",
     "oauth-1.0a": "^2.2.6"
   }
