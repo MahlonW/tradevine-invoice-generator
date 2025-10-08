@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - LOGO_URL=${LOGO_URL:-/logo.svg}
+      - PRINTNODE_API_KEY=${PRINTNODE_API_KEY}
+      - PRINTNODE_PRINTER_ID=${PRINTNODE_PRINTER_ID}
+    volumes:
+      # Mount environment file if you have one
+      - ./.env:/app/.env:ro
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # Optional: Add a database service if needed
+  # mysql:
+  #   image: mysql:8.0
+  #   environment:
+  #     MYSQL_ROOT_PASSWORD: rootpassword
+  #     MYSQL_DATABASE: trademe_db
+  #     MYSQL_USER: trademe_user
+  #     MYSQL_PASSWORD: trademe_password
+  #   ports:
+  #     - "3306:3306"
+  #   volumes:
+  #     - mysql_data:/var/lib/mysql
+  #   restart: unless-stopped
+  #   networks:
+  #     - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+# volumes:
+#   mysql_data:

@@ -1,0 +1,147 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run type checking
+      run: npm run check
+
+    - name: Build application
+      run: npm run build
+
+    - name: Check for build artifacts
+      run: |
+        if [ -d ".svelte-kit/output" ]; then
+          echo "SvelteKit build output exists"
+          ls -la .svelte-kit/output/
+        else
+          echo "SvelteKit build output not found"
+          exit 1
+        fi
+
+  security:
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+
+    - name: Install dependencies
+      run: npm ci
+
+    - name: Run security audit (show all issues)
+      run: npm audit || true
+
+    - name: Check for critical vulnerabilities only
+      run: |
+        if npm audit --audit-level critical; then
+          echo "No critical vulnerabilities found"
+        else
+          echo "Critical vulnerabilities found - failing build"
+          exit 1
+        fi
+
+  docker:
+    runs-on: ubuntu-latest
+    needs: [test, security]
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v3
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ghcr.io/${{ github.repository }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Test Docker image
+      run: |
+        REPO_NAME=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+        # Start container with mock environment variables (without --rm for debugging)
+        docker run -d --name test-container -p 3000:3000 \
+          -e DB_HOST=localhost \
+          -e DB_USER=test \
+          -e DB_PASSWORD=test \
+          -e DB_NAME=test \
+          -e CONSUMER_KEY=test \
+          -e CONSUMER_SECRET=test \
+          -e TOKEN_KEY=test \
+          -e TOKEN_SECRET=test \
+          ghcr.io/$REPO_NAME:latest
+        sleep 10
+        # Check if container is still running
+        if docker ps | grep -q test-container; then
+          echo "Container is running successfully"
+          docker stop test-container
+          docker rm test-container
+        else
+          echo "Container failed to start or crashed"
+          echo "Container logs:"
+          docker logs test-container || echo "No logs available"
+          echo "Container status:"
+          docker ps -a | grep test-container || echo "Container not found"
+          docker rm test-container || true
+          exit 1
+        fi

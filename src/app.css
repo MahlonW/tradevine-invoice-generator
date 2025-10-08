@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+/* Custom styles */
+body {
+	@apply bg-gray-50 text-gray-900;
+}
+
+/* Print styles for invoices */
+@media print {
+	* {
+		background: transparent !important;
+		color: black !important;
+		box-shadow: none !important;
+		text-shadow: none !important;
+	}
+	
+	.editable {
+		@apply text-black no-underline;
+	}
+	
+	/* Ensure text is readable on white background */
+	body {
+		background: white !important;
+		color: black !important;
+	}
+	
+	/* Remove any colored backgrounds from elements */
+	.bg-gray-50,
+	.bg-white,
+	.bg-blue-50,
+	.bg-green-50,
+	.bg-red-50,
+	.bg-yellow-50,
+	.bg-purple-50,
+	.bg-pink-50,
+	.bg-indigo-50,
+	.bg-gray-100,
+	.bg-blue-100,
+	.bg-green-100,
+	.bg-red-100,
+	.bg-yellow-100,
+	.bg-purple-100,
+	.bg-pink-100,
+	.bg-indigo-100 {
+		background: white !important;
+	}
+	
+	/* Ensure borders are visible */
+	.border,
+	.border-gray-200,
+	.border-gray-300,
+	.border-gray-400 {
+		border-color: black !important;
+	}
+}
