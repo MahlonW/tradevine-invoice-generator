@@ -161,12 +161,13 @@ export class PDFService {
 			}
 		} as any);
 
-		// Create PDF
-		const imgData = canvas.toDataURL('image/png');
+		// Create PDF with optimized PNG (better compatibility with PrintNode)
+		const imgData = canvas.toDataURL('image/png', 0.9); // Use PNG with 90% quality for better compatibility
 		const pdf = new jsPDF({
 			orientation: 'portrait',
 			unit: 'mm',
-			format: 'a4'
+			format: 'a4',
+			compress: true // Enable PDF compression
 		});
 
 		// Calculate dimensions to fit page with minimal margins
@@ -266,6 +267,15 @@ export class PDFService {
 			pdfPreview: base64Pdf.substring(0, 50) + '...'
 		});
 
+		// If PDF is too large (>500KB), use chunked upload
+		const chunkSize = 100000; // 100KB chunks
+		if (base64Pdf.length > chunkSize) {
+			console.log('PDF is large, using chunked upload...');
+			await this.sendToPrintNodeChunked(base64Pdf, filename, chunkSize);
+			return;
+		}
+
+		// Regular upload for smaller PDFs
 		const response = await fetch('/api/print', {
 			method: 'POST',
 			headers: {
@@ -287,6 +297,44 @@ export class PDFService {
 
 		const result = await response.json();
 		console.log('PrintNode success response:', result);
+	}
+
+	/**
+	 * Send PDF to PrintNode using chunked upload
+	 */
+	async sendToPrintNodeChunked(base64Pdf: string, filename: string, chunkSize: number): Promise<void> {
+		const chunks = [];
+		for (let i = 0; i < base64Pdf.length; i += chunkSize) {
+			chunks.push(base64Pdf.slice(i, i + chunkSize));
+		}
+
+		const chunkId = `pdf_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+		console.log(`Uploading ${chunks.length} chunks for ${filename}`);
+
+		// Send each chunk
+		for (let i = 0; i < chunks.length; i++) {
+			const response = await fetch('/api/print/chunked', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					chunk: chunks[i],
+					chunkIndex: i,
+					totalChunks: chunks.length,
+					filename: filename,
+					chunkId: chunkId
+				})
+			});
+
+			if (!response.ok) {
+				const error = await response.json();
+				throw new Error(`Chunk upload failed: ${error.error || error.message || 'Unknown error'}`);
+			}
+
+			const result = await response.json();
+			console.log(`Chunk ${i + 1}/${chunks.length}: ${result.message}`);
+		}
 	}
 
 	/**

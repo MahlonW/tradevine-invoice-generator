@@ -4,7 +4,12 @@ import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
-		const { pdf, filename } = await request.json();
+		// Try to get the raw body first to check size
+		const rawBody = await request.text();
+		console.log('Raw body size:', rawBody.length, 'bytes');
+		
+		// Parse the JSON
+		const { pdf, filename } = JSON.parse(rawBody);
 
 		if (!pdf || !filename) {
 			return json(
@@ -31,6 +36,13 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		// Send print job to PrintNode
+		console.log('Sending to PrintNode:', {
+			printerId: printerId,
+			filename: filename,
+			pdfSize: pdf.length,
+			apiKeyLength: printNodeApiKey.length
+		});
+
 		const printResponse = await fetch('https://api.printnode.com/printjobs', {
 			method: 'POST',
 			headers: {
@@ -45,6 +57,8 @@ export const POST: RequestHandler = async ({ request }) => {
 				source: 'TradeMe Invoice System'
 			})
 		});
+
+		console.log('PrintNode response status:', printResponse.status);
 
 		if (!printResponse.ok) {
 			const errorData = await printResponse.json();

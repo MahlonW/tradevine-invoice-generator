@@ -32,7 +32,6 @@ RUN adduser --system --uid 1001 sveltekit
 
 # Copy the built application
 COPY --from=builder --chown=sveltekit:nodejs /app/build ./build
-COPY --from=builder --chown=sveltekit:nodejs /app/src/server.js ./src/server.js
 COPY --from=builder --chown=sveltekit:nodejs /app/package.json ./package.json
 COPY --from=builder --chown=sveltekit:nodejs /app/package-lock.json ./package-lock.json
 
@@ -46,5 +45,5 @@ EXPOSE 3000
 ENV PORT=3000
 ENV HOST=0.0.0.0
 
-# Start the application with custom server
-CMD ["node", "src/server.js"]
+# Start the application
+CMD ["node", "build"]
