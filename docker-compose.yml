@@ -6,10 +6,10 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - "3665:3000"
+      - "3000:3000"
     environment:
       - NODE_ENV=production
-      - PORT=3665
+      - PORT=3000
       - HOST=0.0.0.0
       - LOGO_URL=${LOGO_URL:-/logo.svg}
       - PRINTNODE_API_KEY=${PRINTNODE_API_KEY}
