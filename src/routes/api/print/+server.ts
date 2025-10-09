@@ -4,12 +4,7 @@ import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ request }) => {
 	try {
-		// Try to get the raw body first to check size
-		const rawBody = await request.text();
-		console.log('Raw body size:', rawBody.length, 'bytes');
-		
-		// Parse the JSON
-		const { pdf, filename } = JSON.parse(rawBody);
+		const { pdf, filename } = await request.json();
 
 		if (!pdf || !filename) {
 			return json(
