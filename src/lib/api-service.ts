@@ -55,7 +55,83 @@ export async function getSalesOrders(forceRefresh: boolean = false): Promise<any
 		return sortedOrders;
 	} catch (error) {
 		console.error('Error fetching sales orders:', error);
-		return [];
+		
+		// Create detailed error information
+		let errorDetails: {
+			message: string;
+			type: string;
+			timestamp: string;
+			details: {
+				error?: string;
+				status?: number;
+				statusText?: string;
+				data?: any;
+				url?: string;
+				method?: string;
+				headers?: any;
+				params?: any;
+				responseHeaders?: any;
+				requestData?: any;
+				apiContext?: {
+					baseUrl: string;
+					statuses: string[];
+					dateRange: string;
+					totalRequests: number;
+				};
+			};
+		} = {
+			message: 'Failed to fetch sales orders',
+			type: 'API_ERROR',
+			timestamp: new Date().toISOString(),
+			details: {}
+		};
+
+		if (error instanceof Error) {
+			errorDetails.message = error.message;
+			errorDetails.details.error = error.message;
+		}
+
+		// Check if it's an axios error for more specific details
+		if (error && typeof error === 'object' && 'response' in error) {
+			const axiosError = error as any;
+			errorDetails.details.status = axiosError.response?.status;
+			errorDetails.details.statusText = axiosError.response?.statusText;
+			errorDetails.details.data = axiosError.response?.data;
+			errorDetails.details.url = axiosError.config?.url;
+			errorDetails.details.method = axiosError.config?.method?.toUpperCase();
+			errorDetails.details.headers = axiosError.config?.headers;
+			errorDetails.details.params = axiosError.config?.params;
+			errorDetails.details.responseHeaders = axiosError.response?.headers;
+			errorDetails.details.requestData = axiosError.config?.data;
+			
+			// Add specific API request context
+			errorDetails.details.apiContext = {
+				baseUrl: baseUrl,
+				statuses: statuses,
+				dateRange: `${currentDate} to ${tomorrow}`,
+				totalRequests: statuses.length
+			};
+			
+			// Provide user-friendly messages based on status codes
+			if (axiosError.response?.status === 401) {
+				errorDetails.message = 'Authentication failed - please check your API credentials';
+			} else if (axiosError.response?.status === 403) {
+				errorDetails.message = 'Access denied - insufficient permissions';
+			} else if (axiosError.response?.status === 404) {
+				errorDetails.message = 'API endpoint not found';
+			} else if (axiosError.response?.status === 429) {
+				errorDetails.message = 'Rate limit exceeded - please try again later';
+			} else if (axiosError.response?.status >= 500) {
+				errorDetails.message = 'Server error - TradeVine API is experiencing issues';
+			} else if (axiosError.code === 'ECONNABORTED') {
+				errorDetails.message = 'Request timeout - API took too long to respond';
+			} else if (axiosError.code === 'ENOTFOUND' || axiosError.code === 'ECONNREFUSED') {
+				errorDetails.message = 'Network error - unable to connect to TradeVine API';
+			}
+		}
+
+		// Throw the detailed error instead of returning empty array
+		throw new Error(JSON.stringify(errorDetails));
 	}
 }
 
@@ -87,7 +163,82 @@ export async function getOrder(orderNumber: string, forceRefresh: boolean = fals
 		return orderDetailsList;
 	} catch (error) {
 		console.error('Error fetching order:', error);
-		return [];
+		
+		// Create detailed error information
+		let errorDetails: {
+			message: string;
+			type: string;
+			timestamp: string;
+			details: {
+				error?: string;
+				status?: number;
+				statusText?: string;
+				data?: any;
+				url?: string;
+				method?: string;
+				headers?: any;
+				params?: any;
+				responseHeaders?: any;
+				requestData?: any;
+				orderNumber?: string;
+				apiContext?: {
+					apiUrl: string;
+					orderNumber: string;
+				};
+			};
+		} = {
+			message: 'Failed to fetch order details',
+			type: 'API_ERROR',
+			timestamp: new Date().toISOString(),
+			details: {
+				orderNumber: orderNumber
+			}
+		};
+
+		if (error instanceof Error) {
+			errorDetails.message = error.message;
+			errorDetails.details.error = error.message;
+		}
+
+		// Check if it's an axios error for more specific details
+		if (error && typeof error === 'object' && 'response' in error) {
+			const axiosError = error as any;
+			errorDetails.details.status = axiosError.response?.status;
+			errorDetails.details.statusText = axiosError.response?.statusText;
+			errorDetails.details.data = axiosError.response?.data;
+			errorDetails.details.url = axiosError.config?.url;
+			errorDetails.details.method = axiosError.config?.method?.toUpperCase();
+			errorDetails.details.headers = axiosError.config?.headers;
+			errorDetails.details.params = axiosError.config?.params;
+			errorDetails.details.responseHeaders = axiosError.response?.headers;
+			errorDetails.details.requestData = axiosError.config?.data;
+			
+			// Add specific API request context
+			errorDetails.details.apiContext = {
+				apiUrl: apiUrl,
+				orderNumber: orderNumber
+			};
+			
+			// Provide user-friendly messages based on status codes
+			if (axiosError.response?.status === 401) {
+				errorDetails.message = 'Authentication failed - please check your API credentials';
+			} else if (axiosError.response?.status === 403) {
+				errorDetails.message = 'Access denied - insufficient permissions';
+			} else if (axiosError.response?.status === 404) {
+				errorDetails.message = `Order ${orderNumber} not found`;
+			} else if (axiosError.response?.status === 429) {
+				errorDetails.message = 'Rate limit exceeded - please try again later';
+			} else if (axiosError.response?.status >= 500) {
+				errorDetails.message = 'Server error - TradeVine API is experiencing issues';
+			} else if (axiosError.code === 'ECONNABORTED') {
+				errorDetails.message = 'Request timeout - API took too long to respond';
+			} else if (axiosError.code === 'ENOTFOUND' || axiosError.code === 'ECONNREFUSED') {
+				errorDetails.message = 'Network error - unable to connect to TradeVine API';
+			}
+		}
+
+		// Throw the detailed error instead of returning empty array
+		throw new Error(JSON.stringify(errorDetails));
 	}
 }
 
@@ -102,6 +253,85 @@ export async function getSalesOrdersDate(dateFrom: number, dateTo: number): Prom
 		return response.List || [];
 	} catch (error) {
 		console.error('Error fetching sales orders by date:', error);
-		return [];
+		
+		// Create detailed error information
+		let errorDetails: {
+			message: string;
+			type: string;
+			timestamp: string;
+			details: {
+				error?: string;
+				status?: number;
+				statusText?: string;
+				data?: any;
+				url?: string;
+				method?: string;
+				headers?: any;
+				params?: any;
+				responseHeaders?: any;
+				requestData?: any;
+				dateRange?: string;
+				apiContext?: {
+					apiUrl: string;
+					dateRange: string;
+					createdFrom: string;
+					createdTo: string;
+				};
+			};
+		} = {
+			message: 'Failed to fetch sales orders by date',
+			type: 'API_ERROR',
+			timestamp: new Date().toISOString(),
+			details: {
+				dateRange: `${createdFrom} to ${createdTo}`
+			}
+		};
+
+		if (error instanceof Error) {
+			errorDetails.message = error.message;
+			errorDetails.details.error = error.message;
+		}
+
+		// Check if it's an axios error for more specific details
+		if (error && typeof error === 'object' && 'response' in error) {
+			const axiosError = error as any;
+			errorDetails.details.status = axiosError.response?.status;
+			errorDetails.details.statusText = axiosError.response?.statusText;
+			errorDetails.details.data = axiosError.response?.data;
+			errorDetails.details.url = axiosError.config?.url;
+			errorDetails.details.method = axiosError.config?.method?.toUpperCase();
+			errorDetails.details.headers = axiosError.config?.headers;
+			errorDetails.details.params = axiosError.config?.params;
+			errorDetails.details.responseHeaders = axiosError.response?.headers;
+			errorDetails.details.requestData = axiosError.config?.data;
+			
+			// Add specific API request context
+			errorDetails.details.apiContext = {
+				apiUrl: apiUrl,
+				dateRange: `${createdFrom} to ${createdTo}`,
+				createdFrom: createdFrom,
+				createdTo: createdTo
+			};
+			
+			// Provide user-friendly messages based on status codes
+			if (axiosError.response?.status === 401) {
+				errorDetails.message = 'Authentication failed - please check your API credentials';
+			} else if (axiosError.response?.status === 403) {
+				errorDetails.message = 'Access denied - insufficient permissions';
+			} else if (axiosError.response?.status === 404) {
+				errorDetails.message = 'No orders found for the specified date range';
+			} else if (axiosError.response?.status === 429) {
+				errorDetails.message = 'Rate limit exceeded - please try again later';
+			} else if (axiosError.response?.status >= 500) {
+				errorDetails.message = 'Server error - TradeVine API is experiencing issues';
+			} else if (axiosError.code === 'ECONNABORTED') {
+				errorDetails.message = 'Request timeout - API took too long to respond';
+			} else if (axiosError.code === 'ENOTFOUND' || axiosError.code === 'ECONNREFUSED') {
+				errorDetails.message = 'Network error - unable to connect to TradeVine API';
+			}
+		}
+
+		// Throw the detailed error instead of returning empty array
+		throw new Error(JSON.stringify(errorDetails));
 	}
 }

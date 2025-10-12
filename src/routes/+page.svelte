@@ -7,6 +7,7 @@
 	let loading = true;
 	let refreshing = false;
 	let error = '';
+	let errorDetails = null;
 	let cacheStatus = '';
 
 	async function loadData(forceRefresh = false) {
@@ -20,14 +21,32 @@
 			const url = forceRefresh ? '/api/sales-orders?force=true' : '/api/sales-orders';
 			const response = await fetch(url);
 			if (!response.ok) {
-				throw new Error('Failed to fetch sales orders');
+				// Try to get detailed error information from the response
+				try {
+					const errorData = await response.json();
+					if (errorData.error) {
+						errorDetails = errorData;
+						throw new Error(errorData.error);
+					}
+				} catch {
+					// If we can't parse the error response, use a generic message
+				}
+				throw new Error(`Failed to fetch sales orders (${response.status}: ${response.statusText})`);
 			}
 			const data = await response.json();
 			salesOrders = data.salesOrders || [];
 			orderNumbers = data.orderNumbers || [];
 			cacheStatus = data.cached ? 'Cached' : 'Fresh';
 		} catch (err) {
-			error = err instanceof Error ? err.message : 'An error occurred';
+			if (err instanceof Error) {
+				error = err.message;
+			} else {
+				error = 'An error occurred';
+			}
+			// Clear error details if we don't have them from the response
+			if (!errorDetails) {
+				errorDetails = null;
+			}
 		} finally {
 			loading = false;
 			refreshing = false;
@@ -111,7 +130,86 @@
 		</div>
 	{:else if error}
 		<div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md" role="alert">
-			{error}
+			<div class="flex items-start">
+				<div class="flex-shrink-0">
+					<svg class="h-5 w-5 text-red-400" viewBox="0 0 20 20" fill="currentColor">
+						<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" />
+					</svg>
+				</div>
+				<div class="ml-3">
+					<h3 class="text-sm font-medium text-red-800">
+						Error Loading Sales Orders
+					</h3>
+					<div class="mt-2 text-sm text-red-700">
+						<p>{error}</p>
+						
+						{#if errorDetails && errorDetails.details}
+							<div class="mt-4 p-3 bg-red-100 rounded border border-red-200">
+								<h4 class="text-xs font-semibold text-red-800 mb-2">API Request Details:</h4>
+								<div class="text-xs text-red-700 space-y-1">
+									{#if errorDetails.details.status}
+										<div><span class="font-medium">Status:</span> {errorDetails.details.status} {errorDetails.details.statusText}</div>
+									{/if}
+									{#if errorDetails.details.url}
+										<div><span class="font-medium">URL:</span> <code class="bg-red-200 px-1 rounded">{errorDetails.details.url}</code></div>
+									{/if}
+									{#if errorDetails.details.method}
+										<div><span class="font-medium">Method:</span> {errorDetails.details.method}</div>
+									{/if}
+									{#if errorDetails.details.apiContext}
+										<div><span class="font-medium">API Context:</span></div>
+										<div class="ml-2">
+											{#if errorDetails.details.apiContext.baseUrl}
+												<div><span class="font-medium">Base URL:</span> <code class="bg-red-200 px-1 rounded">{errorDetails.details.apiContext.baseUrl}</code></div>
+											{/if}
+											{#if errorDetails.details.apiContext.dateRange}
+												<div><span class="font-medium">Date Range:</span> {errorDetails.details.apiContext.dateRange}</div>
+											{/if}
+											{#if errorDetails.details.apiContext.statuses}
+												<div><span class="font-medium">Statuses:</span> {errorDetails.details.apiContext.statuses.join(', ')}</div>
+											{/if}
+											{#if errorDetails.details.apiContext.totalRequests}
+												<div><span class="font-medium">Total Requests:</span> {errorDetails.details.apiContext.totalRequests}</div>
+											{/if}
+											{#if errorDetails.details.apiContext.orderNumber}
+												<div><span class="font-medium">Order Number:</span> {errorDetails.details.apiContext.orderNumber}</div>
+											{/if}
+										</div>
+									{/if}
+									{#if errorDetails.details.data}
+										<div class="mt-2">
+											<span class="font-medium">Response Data:</span>
+											<pre class="mt-1 text-xs bg-red-200 p-2 rounded overflow-x-auto">{JSON.stringify(errorDetails.details.data, null, 2)}</pre>
+										</div>
+									{/if}
+									{#if errorDetails.timestamp}
+										<div class="mt-2 text-red-600"><span class="font-medium">Timestamp:</span> {new Date(errorDetails.timestamp).toLocaleString()}</div>
+									{/if}
+								</div>
+							</div>
+						{/if}
+						
+						<div class="mt-3">
+							<p class="text-xs text-red-600">
+								If this problem persists, please check:
+							</p>
+							<ul class="mt-1 text-xs text-red-600 list-disc list-inside space-y-1">
+								<li>Your internet connection</li>
+								<li>TradeVine API credentials</li>
+								<li>API service status</li>
+							</ul>
+						</div>
+						<div class="mt-3">
+							<button
+								on:click={forceRefresh}
+								class="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-medium transition-colors duration-200"
+							>
+								Try Again
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
 		</div>
 	{:else}
 		<div class="space-y-4">

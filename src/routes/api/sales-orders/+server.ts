@@ -32,9 +32,37 @@ export async function GET({ url }) {
 		});
 	} catch (error) {
 		console.error('Error in sales-orders API:', error);
-		return json(
-			{ error: 'Failed to fetch sales orders' },
-			{ status: 500 }
-		);
+		
+		// Try to parse detailed error information
+		let errorResponse = {
+			error: 'Failed to fetch sales orders',
+			details: 'An unexpected error occurred',
+			timestamp: new Date().toISOString(),
+			type: 'UNKNOWN_ERROR'
+		};
+
+		if (error instanceof Error) {
+			try {
+				// Check if the error message contains JSON error details
+				const errorData = JSON.parse(error.message);
+				if (errorData.message && errorData.type) {
+					errorResponse = {
+						error: errorData.message,
+						details: errorData.details || 'No additional details available',
+						timestamp: errorData.timestamp || new Date().toISOString(),
+						type: errorData.type
+					};
+				} else {
+					errorResponse.error = error.message;
+					errorResponse.details = error.message;
+				}
+			} catch {
+				// If not JSON, use the error message directly
+				errorResponse.error = error.message;
+				errorResponse.details = error.message;
+			}
+		}
+
+		return json(errorResponse, { status: 500 });
 	}
 }
