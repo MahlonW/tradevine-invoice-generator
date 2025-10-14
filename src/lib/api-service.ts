@@ -1,5 +1,5 @@
 import { OAuth1Client } from './oauth';
-import { format, subDays } from 'date-fns';
+import { format, subDays, subHours } from 'date-fns';
 import { cacheService } from './cache';
 
 
@@ -132,6 +132,59 @@ export async function getSalesOrders(forceRefresh: boolean = false): Promise<any
 
 		// Throw the detailed error instead of returning empty array
 		throw new Error(JSON.stringify(errorDetails));
+	}
+}
+
+export async function getRecentSalesOrders(hoursBack: number = 5, forceRefresh: boolean = false): Promise<any[]> {
+	// Fetch orders from the last X hours to ensure we capture very recent orders
+	const hoursAgo = format(subHours(new Date(), hoursBack), 'MM/dd/yy');
+	const tomorrow = format(new Date(Date.now() + 24 * 60 * 60 * 1000), 'MM/dd/yy');
+	
+	// Check cache first (unless force refresh is requested)
+	const cacheKey = `recent-sales-orders-${hoursAgo}-${tomorrow}`;
+	if (!forceRefresh) {
+		const cachedData = cacheService.get(cacheKey);
+		if (cachedData) {
+			return cachedData;
+		}
+	}
+	
+	const baseUrl = 'https://api.tradevine.com/v1/SalesOrder';
+	const statuses = ['12001', '12002', '12003', '12004', '12005', '12006'];
+	
+	// Fetch orders from the last X hours up to tomorrow
+	const requests = statuses.map(status => 
+		oauthClient.makeRequest('GET', baseUrl, {
+			pageNumber: '1',
+			pageSize: '50',
+			status: status,
+			createdFrom: hoursAgo,
+			createdTo: tomorrow
+		})
+	);
+
+	try {
+		const responses = await Promise.all(requests);
+
+		// Merge the "List" key from all responses
+		const mergedList = responses.reduce((acc, response) => {
+			return acc.concat(response.List || []);
+		}, []);
+
+		// Sort orders by creation date (newest first)
+		const sortedOrders = mergedList.sort((a: any, b: any) => {
+			const dateA = new Date(a.CreatedDate);
+			const dateB = new Date(b.CreatedDate);
+			return dateB.getTime() - dateA.getTime(); // Descending order (newest first)
+		});
+		
+		// Cache the results (recent orders change frequently, so cache will expire naturally)
+		cacheService.set(cacheKey, sortedOrders);
+		
+		return sortedOrders;
+	} catch (error) {
+		console.error('Error fetching recent sales orders:', error);
+		throw error;
 	}
 }
 

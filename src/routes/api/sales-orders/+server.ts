@@ -1,5 +1,5 @@
 import { json } from '@sveltejs/kit';
-import { getSalesOrders } from '$lib/api-service';
+import { getSalesOrders, getRecentSalesOrders } from '$lib/api-service';
 import { orderExists, getAllOrderNumbers, createDatabase } from '$lib/database';
 
 export async function GET({ url }) {
@@ -13,12 +13,35 @@ export async function GET({ url }) {
 		// Get sales orders from API (with optional force refresh)
 		const salesOrders = await getSalesOrders(forceRefresh);
 		
+		// Also fetch recent orders (last 5 hours) to ensure we don't miss any
+		let recentOrders = [];
+		try {
+			recentOrders = await getRecentSalesOrders(5, forceRefresh);
+		} catch (error) {
+			console.warn('Failed to fetch recent orders, continuing with main orders:', error);
+		}
+		
+		// Merge and deduplicate orders (recent orders might overlap with main orders)
+		const allOrders = [...salesOrders];
+		recentOrders.forEach(recentOrder => {
+			if (!allOrders.find(order => order.OrderNumber === recentOrder.OrderNumber)) {
+				allOrders.push(recentOrder);
+			}
+		});
+		
+		// Sort all orders by creation date (newest first)
+		const sortedAllOrders = allOrders.sort((a: any, b: any) => {
+			const dateA = new Date(a.CreatedDate);
+			const dateB = new Date(b.CreatedDate);
+			return dateB.getTime() - dateA.getTime();
+		});
+		
 		// Get existing order numbers from database
 		const orderNumbers = await getAllOrderNumbers();
 		
 		// Check which orders exist in database
 		const processedOrders = [];
-		for (const order of salesOrders) {
+		for (const order of sortedAllOrders) {
 			const exists = await orderExists(order.OrderNumber);
 			if (exists) {
 				processedOrders.push(exists);
@@ -26,9 +49,11 @@ export async function GET({ url }) {
 		}
 		
 		return json({
-			salesOrders,
+			salesOrders: sortedAllOrders,
 			orderNumbers: processedOrders,
-			cached: !forceRefresh
+			cached: !forceRefresh,
+			recentOrdersCount: recentOrders.length,
+			totalOrdersCount: sortedAllOrders.length
 		});
 	} catch (error) {
 		console.error('Error in sales-orders API:', error);
